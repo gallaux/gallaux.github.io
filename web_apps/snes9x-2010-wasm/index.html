@@ -27,7 +27,7 @@
 
       <div id="menu">
         <div id="menuHeader">
-          <div id="menuHeaderLeftMessage">Snes9x 2010 Wasm Menu</div>
+          <div id="menuHeaderLeftMessage">Snes9x 2010 Wasm Menu<span id="menuRomName"></span></div>
           <div class="flex1"></div>
           <div id="menuHeaderRightMessage">
             <a href="javascript:void(0)" id="menuHeaderLeftMessageChild">Close</a>
@@ -60,6 +60,9 @@
               </div>
               <div class="squareButton" id="reloadRomButton" style="display: none;">
                 <div class="squareButtonMsg">Reload ROM</div>
+              </div>
+              <div class="squareButton" id="resetRomButton" style="display: none;">
+                <div class="squareButtonMsg">Reset</div>
               </div>
               <div class="squareButton" id="loadSramButton" style="display: none;">
                 <div class="squareButtonMsg">Load SRAM</div>
@@ -360,7 +363,7 @@
       <div id="keyboardInputRight" class="flex1"></div>
 
       <div id="middle">
-        <div class="canvasWrap"><canvas id="output"></canvas><div id="canvasLoadRomOverlay">Load ROM...</div></div>
+        <div class="canvasWrap"><canvas id="output"></canvas><div id="canvasLoadRomOverlay">Load ROM...</div><div id="speedOsd"></div></div>
         <div class="flex1">
           <div id="LRButtonParent">
             <div class="LRButton" id="LButton" data-snes-button="5">
@@ -375,13 +378,13 @@
           <div id="StartSelectParent">
             <div class="flex1 displayFlex">
               <div class="flex1"></div>
-              <div class="startSelectMsg" id="selectMsg">SELECT</div>
+              <div id="selectMsg">SELECT</div>
             </div>
             <div class="StartSelectCommon" id="SEButton" data-snes-button="13"></div>
             <div class="StartSelectGap"></div>
             <div class="StartSelectCommon" id="STButton" data-snes-button="12"></div>
             <div class="flex1 displayFlex">
-              <div class="startSelectMsg" id="startMsg">START</div>
+              <div id="startMsg">START</div>
               <div class="flex1 displayFlex">
                 <div class="flex1"></div>
                 <div id="menuOpen2Parent" class="displayFlex">
@@ -426,7 +429,7 @@
         </div>
       </div>
 
-      <div id="keyboardInput" class="flex1">
+      <div class="flex1">
         <div id="menuOpen1Parent">
           <div class="StartSelectCommon" id="menuOpen1"></div>
           <div>Menu</div>

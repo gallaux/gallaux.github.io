@@ -59,7 +59,7 @@ function menuButtonFullScreen() {
 // Bit positions: right=8, left=9, down=10, up=11, start=12, select=13, b=15, y=14, a=7, x=6, l=5, r=4
 
 const KEYMAPS = {
-  numpad_p1: {
+  p1: {
     arrowright: [1, 8], arrowleft: [1, 9], arrowdown: [1, 10], arrowup: [1, 11],
     enter:      [1, 12], // START
     "0":        [1, 13], // SELECT
@@ -70,7 +70,7 @@ const KEYMAPS = {
     "4":        [1, 5],  // L
     "6":        [1, 4],  // R
   },
-  numpad_p2: {
+  p2: {
     w: [2, 11], s: [2, 10], a: [2, 9], d: [2, 8],
     " ":        [2, 12], // START
     shift:      [2, 13], // SELECT
@@ -81,31 +81,25 @@ const KEYMAPS = {
     t:          [2, 5],  // L
     u:          [2, 4],  // R
   },
-  nonumpad_p1: {
-    w: [1, 11], s: [1, 10], a: [1, 9], d: [1, 8],
-    " ":        [1, 12], // START
-    shift:      [1, 13], // SELECT
-    j:          [1, 7],  // A
-    h:          [1, 15], // B
-    y:          [1, 6],  // X
-    g:          [1, 14], // Y
-    t:          [1, 5],  // L
-    u:          [1, 4],  // R
-  },
-  nonumpad_p2: {
-    l: [2, 8], ";": [2, 9], p: [2, 11], "'": [2, 10],
-    enter:      [2, 12], // START
-    "/":        [2, 13], // SELECT
-    arrowright: [2, 7],  // A
-    arrowleft:  [2, 15], // B
-    arrowup:    [2, 6],  // X
-    arrowdown:  [2, 14], // Y
-    o:          [2, 5],  // L
-    "[":        [2, 4],  // R
-  },
 };
 
-let _cachedKeymaps = null;
+const DEFAULT_HOTKEYS = {
+  speedup:   "+",
+  speeddown: "-",
+};
+
+function getHotkey(action) {
+  return (customKeymaps.hotkeys && customKeymaps.hotkeys[action]) ?? DEFAULT_HOTKEYS[action];
+}
+
+let _hotkeyLookup = null; // key -> action
+
+function rebuildHotkeyLookup() {
+  _hotkeyLookup = {};
+  for (const action of Object.keys(DEFAULT_HOTKEYS)) {
+    _hotkeyLookup[getHotkey(action)] = action;
+  }
+}
 
 function buildMap(baseName) {
   const computed = {};
@@ -115,7 +109,7 @@ function buildMap(baseName) {
   const custom = customKeymaps[baseName];
   if (custom) {
     for (const [bit, newKey] of Object.entries(custom)) {
-      const player = baseName.includes("_p1") ? 1 : 2;
+      const player = baseName === "p1" ? 1 : 2;
       for (const [k, [p, b]] of Object.entries(computed)) {
         if (p === player && b === Number(bit)) { delete computed[k]; break; }
       }
@@ -126,7 +120,8 @@ function buildMap(baseName) {
 }
 
 function rebuildKeymapCache() {
-  _cachedKeymaps = [buildMap("numpad_p1"), buildMap("numpad_p2")];
+  _cachedKeymaps = [buildMap("p1"), buildMap("p2")];
+  rebuildHotkeyLookup();
 }
 
 function handleKey(key, down) {
@@ -151,6 +146,9 @@ document.addEventListener("keydown", (e) => {
     e.returnValue = false;
     menuButtonFullScreen();
   }
+  const action = _hotkeyLookup && _hotkeyLookup[key];
+  if (action === "speedup")   { setSpeed(currentSpeed + parseInt(el("speedSlider").step)); return; }
+  if (action === "speeddown") { setSpeed(currentSpeed - parseInt(el("speedSlider").step)); return; }
   handleKey(key, true);
 });
 
@@ -184,6 +182,7 @@ class MyFileReader extends FileReader {
     if (tmp) {
       const f = tmp[0];
       this.fileName = f.name;
+      this.fileHandle = f;
       this.readAsArrayBuffer(f);
     }
   }
@@ -211,11 +210,13 @@ romFr.loadHandlerFunc = () => {
   Module._startWithRom(romPtr, romFr.fileData.length, SAMPLE_RATE);
   Module._my_free(romPtr);
   el("reloadRomButton").style.display = "";
+  el("resetRomButton").style.display = "";
   el("loadSramButton").style.display = "";
   el("saveSramButton").style.display = "";
   el("loadStateButton").style.display = "";
   el("saveStateButton").style.display = "";
   el("canvasLoadRomOverlay").style.display = "none";
+  el("menuRomName").innerHTML = " — " + romFr.fileName.replace(/\.[^.]+$/, "");
   exitMenu();
 };
 
@@ -401,7 +402,7 @@ const BUTTON_LABELS = [
 ];
 
 function getEffectiveKey(player, bit) {
-  const mapName = "numpad_p" + player;
+  const mapName = "p" + player;
   const map = buildMap(mapName);
   for (const [key, [p, b]] of Object.entries(map)) {
     if (p === player && b === bit) return key;
@@ -441,7 +442,9 @@ function buildKeyRemapUI() {
       btn.addEventListener("click", () => {
         if (listeningFor) {
           listeningFor.btn.classList.remove("listening");
-          listeningFor.btn.innerHTML = displayKey(getEffectiveKey(listeningFor.player, listeningFor.bit));
+          listeningFor.btn.innerHTML = listeningFor.hotkey
+            ? displayKey(getHotkey(listeningFor.hotkey))
+            : displayKey(getEffectiveKey(listeningFor.player, listeningFor.bit));
         }
         listeningFor = { player, bit, btn };
         btn.classList.add("listening");
@@ -457,7 +460,7 @@ function buildKeyRemapUI() {
     resetBtn.style.marginTop = "12px";
     resetBtn.innerHTML = "Reset P" + player;
     resetBtn.addEventListener("click", () => {
-      const mapName = "numpad_p" + player;
+      const mapName = "p" + player;
       if (customKeymaps[mapName]) {
         delete customKeymaps[mapName];
         localStorage.setItem("customKeymaps", JSON.stringify(customKeymaps));
@@ -469,9 +472,58 @@ function buildKeyRemapUI() {
     col.appendChild(resetBtn);
     content.appendChild(col);
   }
-}
 
-function rebuildActiveKeymap() { rebuildKeymapCache(); }
+  const hotkeyLabels = [
+    { name: "Speed Up", action: "speedup" },
+    { name: "Speed Down", action: "speeddown" },
+  ];
+  const hcol = document.createElement("div");
+  hcol.className = "keyRemapPlayer";
+  const htitle = document.createElement("div");
+  htitle.className = "keyRemapPlayerTitle";
+  htitle.innerHTML = "Hotkeys";
+  hcol.appendChild(htitle);
+
+  for (const { name, action } of hotkeyLabels) {
+    const row = document.createElement("div");
+    row.className = "keyRemapRow";
+    const label = document.createElement("div");
+    label.className = "keyRemapLabel";
+    label.innerHTML = name + ":";
+    const btn = document.createElement("button");
+    btn.className = "keyRemapBtn";
+    btn.innerHTML = displayKey(getHotkey(action));
+    btn.addEventListener("click", () => {
+      if (listeningFor) {
+        listeningFor.btn.classList.remove("listening");
+        listeningFor.btn.innerHTML = listeningFor.hotkey
+          ? displayKey(getHotkey(listeningFor.hotkey))
+          : displayKey(getEffectiveKey(listeningFor.player, listeningFor.bit));
+      }
+      listeningFor = { hotkey: action, btn };
+      btn.classList.add("listening");
+      btn.innerHTML = "...";
+    });
+    row.appendChild(label);
+    row.appendChild(btn);
+    hcol.appendChild(row);
+  }
+
+  const hResetBtn = document.createElement("button");
+  hResetBtn.className = "keyRemapBtn";
+  hResetBtn.style.marginTop = "12px";
+  hResetBtn.innerHTML = "Reset Hotkeys";
+  hResetBtn.addEventListener("click", () => {
+    if (customKeymaps.hotkeys) {
+      delete customKeymaps.hotkeys;
+      localStorage.setItem("customKeymaps", JSON.stringify(customKeymaps));
+      buildKeyRemapUI();
+      rebuildKeymapCache();
+    }
+  });
+  hcol.appendChild(hResetBtn);
+  content.appendChild(hcol);
+}
 
 document.addEventListener("keydown", (e) => {
   if (listeningFor) {
@@ -479,11 +531,23 @@ document.addEventListener("keydown", (e) => {
     const key = e.key.toLowerCase();
     if (key === "escape") {
       listeningFor.btn.classList.remove("listening");
-      listeningFor.btn.innerHTML = displayKey(getEffectiveKey(listeningFor.player, listeningFor.bit));
+      listeningFor.btn.innerHTML = listeningFor.hotkey
+        ? displayKey(getHotkey(listeningFor.hotkey))
+        : displayKey(getEffectiveKey(listeningFor.player, listeningFor.bit));
       listeningFor = null;
       return;
     }
-    const mapName = "numpad_p" + listeningFor.player;
+    if (listeningFor.hotkey) {
+      if (!customKeymaps.hotkeys) customKeymaps.hotkeys = {};
+      customKeymaps.hotkeys[listeningFor.hotkey] = key;
+      localStorage.setItem("customKeymaps", JSON.stringify(customKeymaps));
+      listeningFor.btn.classList.remove("listening");
+      listeningFor.btn.innerHTML = displayKey(key);
+      listeningFor = null;
+      rebuildKeymapCache();
+      return;
+    }
+    const mapName = "p" + listeningFor.player;
     if (!customKeymaps[mapName]) customKeymaps[mapName] = {};
     customKeymaps[mapName][listeningFor.bit] = key;
     localStorage.setItem("customKeymaps", JSON.stringify(customKeymaps));
@@ -513,20 +577,7 @@ const [fs_ctx, fs_imgData] = canvasSetup(fso);
 
 Module.onRuntimeInitialized = async _ => {
   isModuleInitialized = true;
-  //fetchRom();
 };
-
-function fetchRom() {
-  fetch("rom.sfc")
-    .then(response => response.arrayBuffer())
-    .then(arrayBuffer => {
-      const rom = new Uint8Array(arrayBuffer);
-      const romPtr = setUint8ArrayToCMemory(rom);
-      Module._startWithRom(romPtr, rom.length, SAMPLE_RATE);
-      Module._my_free(romPtr);
-    })
-    .catch(() => {});
-}
 
 function requestFrame() {
   run1fr();
@@ -603,10 +654,20 @@ function saveState() {
   if (statePtr == 0) return;
   const state = new Uint8Array(new Uint8Array(Module.HEAP8.buffer, statePtr, stateSize));
   Module._my_free(statePtr);
-  fileSave(state, "state.state");
+  fileSave(state, romFr.fileName.replace(/\.[^.]+$/, "") + ".state");
 }
 
-el("reloadRomButton").addEventListener("click", () => {
+el("reloadRomButton").addEventListener("click", async () => {
+  if (!isModuleInitialized || !romFr.fileHandle) return;
+  const buf = await romFr.fileHandle.arrayBuffer();
+  romFr.fileData = new Uint8Array(buf);
+  const romPtr = setUint8ArrayToCMemory(romFr.fileData);
+  Module._startWithRom(romPtr, romFr.fileData.length, SAMPLE_RATE);
+  Module._my_free(romPtr);
+  exitMenu();
+});
+
+el("resetRomButton").addEventListener("click", () => {
   if (!isModuleInitialized || !romFr.fileData) return;
   const romPtr = setUint8ArrayToCMemory(romFr.fileData);
   Module._startWithRom(romPtr, romFr.fileData.length, SAMPLE_RATE);
@@ -638,10 +699,25 @@ el("volumeLabel").addEventListener("click", () => {
 el("speedSlider").value = currentSpeed;
 el("speedLabel").innerHTML = "Speed: " + currentSpeed + "%";
 
-el("speedSlider").addEventListener("input", (e) => {
-  currentSpeed = parseInt(e.target.value);
+let _speedOsdTimer = null;
+
+function setSpeed(value) {
+  const slider = el("speedSlider");
+  const min = parseInt(slider.min), max = parseInt(slider.max), step = parseInt(slider.step);
+  currentSpeed = Math.max(min, Math.min(max, Math.round(value / step) * step));
+  slider.value = currentSpeed;
   el("speedLabel").innerHTML = "Speed: " + currentSpeed + "%";
   localStorage.setItem("emuSpeed", currentSpeed);
+
+  const osd = el("speedOsd");
+  osd.innerHTML = currentSpeed + "%";
+  osd.classList.add("visible");
+  clearTimeout(_speedOsdTimer);
+  _speedOsdTimer = setTimeout(() => osd.classList.remove("visible"), 1500);
+}
+
+el("speedSlider").addEventListener("input", (e) => {
+  setSpeed(parseInt(e.target.value));
 });
 
 el("fullscreenToggle").addEventListener("click", () => {
@@ -794,7 +870,7 @@ el("menuHeaderLeftMessageChild").addEventListener("click", () => {
   el("gamepadSettings").style.display = "none";
   el("keyRemapSettings").style.display = "none";
   el("squareButtonParentParent").style.display = "grid";
-  el("menuHeaderLeftMessage").innerHTML = "Snes9x 2010 Wasm Menu";
+  el("menuHeaderLeftMessage").innerHTML = "Snes9x 2010 Wasm Menu" + (romFr.fileName ? "<span id=\"menuRomName\"> — " + romFr.fileName.replace(/\.[^.]+$/, "") + "</span>" : "<span id=\"menuRomName\"></span>");
   el("menuHeaderLeftMessageChild").innerHTML = "Close";
   rightUpBackCloseMenu = true;
 });
