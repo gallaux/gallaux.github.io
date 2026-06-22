@@ -209,7 +209,6 @@ romFr.loadHandlerFunc = () => {
   const romPtr = setUint8ArrayToCMemory(romFr.fileData);
   Module._startWithRom(romPtr, romFr.fileData.length, SAMPLE_RATE);
   Module._my_free(romPtr);
-  el("reloadRomButton").style.display = "";
   el("resetRomButton").style.display = "";
   el("loadSramButton").style.display = "";
   el("saveSramButton").style.display = "";
@@ -656,16 +655,6 @@ function saveState() {
   Module._my_free(statePtr);
   fileSave(state, romFr.fileName.replace(/\.[^.]+$/, "") + ".state");
 }
-
-el("reloadRomButton").addEventListener("click", async () => {
-  if (!isModuleInitialized || !romFr.fileHandle) return;
-  const buf = await romFr.fileHandle.arrayBuffer();
-  romFr.fileData = new Uint8Array(buf);
-  const romPtr = setUint8ArrayToCMemory(romFr.fileData);
-  Module._startWithRom(romPtr, romFr.fileData.length, SAMPLE_RATE);
-  Module._my_free(romPtr);
-  exitMenu();
-});
 
 el("resetRomButton").addEventListener("click", () => {
   if (!isModuleInitialized || !romFr.fileData) return;
