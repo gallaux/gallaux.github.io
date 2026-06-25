@@ -1,0 +1,14 @@
+{
+  "files": {
+    "main.css": "/web_apps/smooth-scoreboard/static/css/main.2d3c70c7.css",
+    "main.js": "/web_apps/smooth-scoreboard/static/js/main.98c32fa4.js",
+    "static/media/BebasNeue-Regular.ttf": "/web_apps/smooth-scoreboard/static/media/BebasNeue-Regular.c501e16fa3f0781f9d73.ttf",
+    "index.html": "/web_apps/smooth-scoreboard/index.html",
+    "main.2d3c70c7.css.map": "/web_apps/smooth-scoreboard/static/css/main.2d3c70c7.css.map",
+    "main.98c32fa4.js.map": "/web_apps/smooth-scoreboard/static/js/main.98c32fa4.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.2d3c70c7.css",
+    "static/js/main.98c32fa4.js"
+  ]
+}
